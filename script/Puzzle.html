@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>パズルシューティング</title>
+<style>
+#p1
+{
+	position: absolute;
+	top: 500px;
+	left: 500px;
+}
+</style>
+</head>
+<body>
+  <input id ="p1" type="text">
+
+<script src="enchantjs/enchant.min.js"></script>
+<script src="js/jquery.min.js"></script>
+<script>
+ $(document).ready(function()
+ {
+  enchant();
+  var game = new Core(320,300);//画面作成(width,height);
+  game.fps = 50;
+  //リソースロード
+  game.preload('resource/player.png');
+  game.preload('resource/bullet.png');
+  game.preload('resource/block.png');
+  //zキーをaに登録
+  game.keybind(90,'a');
+
+  var scene = new Scene();//シーン作成
+  scene.backgroundColor = "#b7b7b7";
+
+  var point =0;//仮のポイント
+
+  var blocks = [];//当たり判定用ブロック配列
+
+  var count =0;//最下段に積まれてる数
+
+  var deleteBlocksObj =[];//削除するブロック配列
+  var deleteBlocksNo = [];//削除する配列の配列番号
+
+	////////////////////////作成者　土橋
+  var block_timer = 60;
+
+  //ブロックのパターン
+  var shapes = [
+    [ 1, 1, 1, 1 ],
+    [ 1, 1, 1, 0,
+      1 ],
+    [ 1, 1, 1, 0,
+      0, 0, 1 ],
+    [ 1, 1, 0, 0,
+      1, 1 ],
+    [ 1, 1, 0, 0,
+      0, 1, 1 ],
+    [ 0, 1, 1, 0,
+      1, 1 ],
+    [ 0, 1, 0, 0,
+      1, 1, 1 ]
+    ];
+
+  var block_no = 0;
+	///////////////////////end
+
+//start
+  game.onload = function()
+  {
+    var player = new Player();//player instantiate
+    player.moveTo(300, 200);
+    scene.addChild(player);
+
+    var col = new Sprite(320,10);//最下段当たり判定
+    col.moveTo(0,290);
+    col.backgroundColor = 'red';
+    scene.addChild(col);
+
+  //Update
+    scene.addEventListener('enterframe', function()
+    {
+			//////1.5秒に1回ブロック生成/////作成者　土橋
+      block_timer -= 1;
+      if(block_timer == 0)
+      {
+        var id = Math.floor( Math.random() * shapes.length );  // ランダムにインデックスを出す
+        var rand = Math.floor( Math.random() * 10);
+
+        var shape = shapes[ id ];
+        for(var j = 0; j<4; j++)
+        {
+     	   for(var i =0; i<4; i++)
+     	   {
+           if(shape[i + (j * 4)] == 1){
+             var block = new Block();
+						 block.setNo(block_no);
+             block.x +=33 * i + ((33 * rand) - 33);
+             block.y -= 200 + (j * 33);
+             blocks.push(block);
+             scene.addChild(block);
+           }
+         }
+       }
+        block_no += 1;
+        block_timer = 90;
+      }
+      //////////////////////////////end
+
+      //一番下に来たブロック判定
+      for(var i = 0; i< blocks.length; i++)
+      {
+        if(col.intersect(blocks[i]))
+        {
+          count ++;
+        }
+      }
+
+      if(count ==10)//一列たまったら消す
+      {
+        for(var i = 0; i< blocks.length; i++)
+        {
+          if(col.intersect(blocks[i]))
+          {
+            scene.removeChild(blocks[i]);
+            deleteBlocksNo.push(i);
+          }
+        }
+        for(var j =0; j<10; j++)
+        {
+          blocks.splice(deleteBlocksNo[j]-j, 1);
+        }
+        point += 100;
+        count =0;
+        deleteBlocksNo =[];
+      }
+      else
+      {
+        count =0;
+        deleteBlocksNo =[];
+      }
+
+      document.getElementById("p1").value = "point="+point.toString();//仮のポイント表示
+    });
+
+    //シーン反映
+    game.pushScene(scene);
+  };//end of game.onload function
+
+  game.start();
+
+  //player class
+  var Player = enchant.Class.create(Sprite,
+  {
+    initialize:function()
+    {
+      Sprite.call(this,40,64);
+      this.image = game.assets['resource/player.png'];
+      this.frame = 18;
+
+			//当たり判定用の小さい矩形
+			var pCol = new Sprite(20,55);
+			//pCol.backgroundColor = 'red';
+			scene.addChild(pCol);
+
+      this.on('enterframe',function()
+      {
+        this.frame = 18;
+				pCol.moveTo(this.x + 10,this.y + 5);
+        if(game.input.up)
+        {
+          this.y-= 5;
+          this.frame = 18;
+        }
+        if(game.input.down)
+        {
+          this.y+= 5;
+          this.frame = 18;
+        }
+        if(game.input.right)
+        {
+          this.x+= 5;
+          this.frame = 21;
+        }
+        if(game.input.left)
+        {
+          this.x-= 5;
+          this.frame = 17;
+        }
+        if(game.input.a)
+        {
+          var bullet = new Bullet();
+          bullet.x = this.x;
+          bullet.y = this.y;
+          scene.addChild(bullet);
+        }
+				//当たり判定
+        for(var i =0; i< blocks.length; i++)
+        {
+          if(pCol.intersect(blocks[i]))
+          {
+            scene.removeChild(this);
+						location.href = "result.html?point=" + point;
+          }
+        }
+      });
+    }
+  });
+
+
+  //Bullet class
+  var Bullet = enchant.Class.create(Sprite,
+  {
+    initialize : function()
+    {
+      Sprite.call(this,32,32);
+      this.image = game.assets['resource/bullet.png'];
+      this.on('enterframe',function()
+      {
+        this.y -= 5;
+        if(this.y < 0)
+        {
+          //画面外に出たら消える処理
+          scene.removeChild(this);
+        }
+				//当たり判定
+        for(var i =0; i< blocks.length; i++)
+        {
+          if(this.intersect(blocks[i]))
+          {
+            scene.removeChild(blocks[i]);
+            blocks.splice(i,1);
+          }
+        }
+      });
+    }
+  });
+
+  //Block class
+  var Block = enchant.Class.create(Sprite,
+  {
+    initialize : function()
+    {
+      Sprite.call(this,32,32);
+      this.image = game.assets['resource/block.png'];
+      var dropSpeed = 1;
+
+			var no =0;
+
+      var bCol = new Sprite(32,10);
+      //bCol.backgroundColor = 'red';
+      scene.addChild(bCol);
+
+      this.on('enterframe',function()
+      {
+        this.y += dropSpeed;
+        bCol.moveTo(this.x,this.y+33);
+        if(this.y + 32 > 300)//一番下まで来たら止まる
+        {
+          dropSpeed =0;
+        }
+
+        if(dropSpeed == 1)//動いている時
+        {
+          for(var i =0; i< blocks.length; i++)
+          {
+            if(this.intersect(blocks[i]) && this != blocks[i])
+            {
+              dropSpeed =0;
+            }
+          }
+        }
+
+				//一番下まで行ってないかつ止まってる時(ブロックの上にいる)
+        if(dropSpeed ==0 && this.y + 32 < 300)
+        {
+          var atariCount =0;
+          for(var i =0; i< blocks.length; i++)
+          {
+            if(bCol.intersect(blocks[i]) && this != blocks[i])
+            {
+              atariCount++;
+            }
+          }
+          if(atariCount ==0)
+          {
+            dropSpeed =1;
+          }
+        }
+      });
+    },
+		setNo : function(value)
+		{
+			this.no = value;
+		},
+		getNo : function()
+		{
+			return this.no;
+		}
+  });
+
+});//endof window.onload function
+</script>
+</body>
+</html>

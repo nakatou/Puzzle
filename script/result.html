@@ -1,0 +1,74 @@
+<html>
+<head>
+<title>result</title>
+<style>
+#p
+{
+  text-align: center;
+  color: red;
+  font-size: 30px;
+}
+#chara
+{
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+#point
+{
+  text-align: center;
+  font-size: 30px;
+  color: red;
+}
+#result
+{
+  text-align: center;
+  font-size: 30px;
+  color: red;
+}
+#title_button
+{
+  text-align: center;
+}
+</style>
+</head>
+
+<body background="blue">
+<p id = "p">
+  リザルト
+</p>
+
+<p id = "point"></p>
+
+<script>
+var get = getdata();
+document.getElementById("point").innerHTML = "スコア:"+get;
+
+function getdata()
+{
+    /* URLの「?」以降のパラメータを変数nに代入 */
+    var pram = window.location.search.substring(1,window.location.search.length);
+    var pair = pram.split("&");
+
+    var i=temp="";
+    var key=new Array();
+    for (i=0; i < pair.length; i++)
+    {
+      /* 配列の値を「=」で分割 */
+      temp=pair[i].split("=");
+      keyName=temp[0];
+      keyValue=temp[1];
+      /* キーと値の連想配列を生成 */
+      key[keyName]=keyValue;
+    }
+    return keyValue;
+}
+
+</script>
+
+<div id = "title_button">
+<input id='button1' type='button' value='タイトルへ戻る' onClick="location.href='title.html'">
+</div>
+</body>
+
+</html>
