@@ -3,14 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>パズルシューティング</title>
-<style>
-#p1
-{
-	position: absolute;
-	top: 500px;
-	left: 500px;
-}
-</style>
+<!--メインループ作成 統合 中東-->
 </head>
 <body>
   <input id ="p1" type="text">
@@ -21,8 +14,8 @@
  $(document).ready(function()
  {
   enchant();
-  var game = new Core(320,300);//画面作成(width,height);
-  game.fps = 50;
+  var game = new Core(330,300);//画面作成(width,height);
+  game.fps = 60;
   //リソースロード
   game.preload('resource/player.png');
   game.preload('resource/bullet.png');
@@ -33,16 +26,13 @@
   var scene = new Scene();//シーン作成
   scene.backgroundColor = "#b7b7b7";
 
-  var point =0;//仮のポイント
-
   var blocks = [];//当たり判定用ブロック配列
 
   var count =0;//最下段に積まれてる数
 
-  var deleteBlocksObj =[];//削除するブロック配列
   var deleteBlocksNo = [];//削除する配列の配列番号
 
-	////////////////////////作成者　土橋
+	////////////////////////作成者 土橋
   var block_timer = 60;
 
   //ブロックのパターン
@@ -63,7 +53,28 @@
     ];
 
   var block_no = 0;
-	///////////////////////end
+	/////////////////////////////end
+
+	//////土橋/////
+	var ranking = new Array();
+	var dead = false;
+//////////////end
+
+////////////////////////////////作成者 飯島
+	// スコア変数
+  var score = 0;
+  // スコアを表示するラベルを作成
+  var scoreLabel = new Label("SCORE :"+score);
+  // フォントのサイズ・種類の設定
+  scoreLabel.font = "25px 'ＭＳ ゴシック'";
+  // 色の変更
+  scoreLabel.color = "white";
+  scoreLabel.x = 10;	// X座標
+  scoreLabel.y = 5;	// Y座標
+	//スコアの表示
+  scene.addChild(scoreLabel);
+	//////////////////////////////////////end
+
 
 //start
   game.onload = function()
@@ -72,15 +83,37 @@
     player.moveTo(300, 200);
     scene.addChild(player);
 
-    var col = new Sprite(320,10);//最下段当たり判定
+    var col = new Sprite(330,10);//最下段当たり判定
     col.moveTo(0,290);
     col.backgroundColor = 'red';
-    scene.addChild(col);
+		scene.addChild(col);
+
+		/////土橋////////////////////////
+		if(!JSON.parse( sessionStorage.getItem("jsons"))){
+			ranking.unshift(100);
+			ranking.unshift(300);
+			ranking.unshift(500);
+			//配列をJSON文字列に変換してアラート表示させる
+			  var jstr = JSON.stringify(ranking);
+			  alert( jstr );
+			  //JSON文字列をセッションストレージに書き込む
+			  sessionStorage.setItem( "jsons" , jstr );
+			  //ストレージから読み込んだJSON文字列を配列に戻す
+			  var arr = JSON.parse( sessionStorage.getItem("jsons") );
+
+		}
+		else{
+			var arr = JSON.parse( sessionStorage.getItem("jsons") );
+			ranking = arr;
+			//alert(arr);
+		}
+		/////////////////////////////end
+
 
   //Update
     scene.addEventListener('enterframe', function()
     {
-			//////1.5秒に1回ブロック生成/////作成者　土橋
+			////////1.5秒に1回ブロック生成///////作成者 土橋
       block_timer -= 1;
       if(block_timer == 0)
       {
@@ -95,6 +128,7 @@
            if(shape[i + (j * 4)] == 1){
              var block = new Block();
 						 block.setNo(block_no);
+						 block.setStop(false);
              block.x +=33 * i + ((33 * rand) - 33);
              block.y -= 200 + (j * 33);
              blocks.push(block);
@@ -103,9 +137,9 @@
          }
        }
         block_no += 1;
-        block_timer = 90;
+        block_timer = 60 * 3;
       }
-      //////////////////////////////end
+      /////////////////////////////////end
 
       //一番下に来たブロック判定
       for(var i = 0; i< blocks.length; i++)
@@ -130,17 +164,19 @@
         {
           blocks.splice(deleteBlocksNo[j]-j, 1);
         }
-        point += 100;
+        score += 100;
         count =0;
         deleteBlocksNo =[];
       }
-      else
+      else//１列じゃなければカウントリセット
       {
         count =0;
         deleteBlocksNo =[];
       }
 
-      document.getElementById("p1").value = "point="+point.toString();//仮のポイント表示
+			//スコアの表示/////////////////////////////作成者 飯島
+      scoreLabel.text = "SCORE :"+score;
+			////////////////////////////////end
     });
 
     //シーン反映
@@ -159,14 +195,14 @@
       this.frame = 18;
 
 			//当たり判定用の小さい矩形
-			var pCol = new Sprite(20,55);
-			//pCol.backgroundColor = 'red';
+			var pCol = new Sprite(20,32);
+			pCol.backgroundColor = 'red';
 			scene.addChild(pCol);
 
       this.on('enterframe',function()
       {
         this.frame = 18;
-				pCol.moveTo(this.x + 10,this.y + 5);
+				pCol.moveTo(this.x + 10,this.y + 20);
         if(game.input.up)
         {
           this.y-= 5;
@@ -197,10 +233,24 @@
 				//当たり判定
         for(var i =0; i< blocks.length; i++)
         {
-          if(pCol.intersect(blocks[i]))
+          if(pCol.intersect(blocks[i]) && !dead)
           {
+						dead = true;
             scene.removeChild(this);
-						location.href = "result.html?point=" + point;
+
+						///////////////////////////作成者   土橋
+						ranking.unshift(score);//スコア保存
+							ranking.sort(function(a,b){
+        			if( a > b ) return -1;
+        			if( a < b ) return 1;
+        			return 0;
+						});
+							//配列をJSON文字列に変換
+						  var jstr = JSON.stringify(ranking);
+						  //JSON文字列をセッションストレージに書き込む
+						  sessionStorage.setItem( "jsons" , jstr );
+							//////////////////end
+							location.href = "result.html?point=" + ranking;
           }
         }
       });
@@ -230,6 +280,7 @@
           {
             scene.removeChild(blocks[i]);
             blocks.splice(i,1);
+						scene.removeChild(this);
           }
         }
       });
@@ -245,10 +296,8 @@
       this.image = game.assets['resource/block.png'];
       var dropSpeed = 1;
 
-			var no =0;
 
       var bCol = new Sprite(32,10);
-      //bCol.backgroundColor = 'red';
       scene.addChild(bCol);
 
       this.on('enterframe',function()
@@ -258,6 +307,7 @@
         if(this.y + 32 > 300)//一番下まで来たら止まる
         {
           dropSpeed =0;
+					this.setStop(true);
         }
 
         if(dropSpeed == 1)//動いている時
@@ -267,11 +317,12 @@
             if(this.intersect(blocks[i]) && this != blocks[i])
             {
               dropSpeed =0;
+							this.setStop(true);
             }
           }
         }
 
-				//一番下まで行ってないかつ止まってる時(ブロックの上にいる)
+				//一番下まで行ってないかつ止まってる時
         if(dropSpeed ==0 && this.y + 32 < 300)
         {
           var atariCount =0;
@@ -287,8 +338,22 @@
             dropSpeed =1;
           }
         }
-      });
-    },
+
+				var counter =0;
+				//スピードがゼロの同じナンバーのブロックがいたら自分も止まる
+				for(var i = 0; i< blocks.length; i++)
+				{
+					if(this.no == blocks[i].getNo() && blocks[i] != this)
+					{
+						if(blocks[i].getStop() == true)
+						{
+							dropSpeed = 0;
+							counter ++;
+						}
+					}
+				}
+    });
+  },
 		setNo : function(value)
 		{
 			this.no = value;
@@ -296,6 +361,14 @@
 		getNo : function()
 		{
 			return this.no;
+		},
+		setStop : function(value)
+		{
+			this.stopF = value;
+		},
+		getStop : function()
+		{
+			return this.stopF;
 		}
   });
 
